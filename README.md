@@ -32,3 +32,48 @@ K-Means, Agglomerative Clustering, DBSCAN, and Gaussian Mixture Models (GMM).
 | Low-Engagement Users | 1,656 (18.5%) | Minimal activity across all dimensions |
 
 ## Repository Structure
+├── data/              # Raw dataset (CC_GENERAL.csv)
+├── notebooks/         # Jupyter notebooks (EDA, clustering, profiling)
+├── figures/           # All output figures
+├── outputs/           # Saved CSVs (scaled data, labels, metrics)
+└── report/            # IEEE LaTeX paper
+
+## Setup & Usage
+
+### Requirements
+```bash
+pip install pandas numpy matplotlib seaborn scikit-learn scipy joblib
+```
+
+### Run in order
+
+```bash
+# Step 1 — Preprocessing & EDA
+jupyter notebook notebooks/EDA.ipynb
+
+# Step 2 — Clustering (all 4 models)
+jupyter notebook notebooks/clusturing.ipynb
+
+# Step 3 — Cluster profiling & visualization
+jupyter notebook notebooks/final.ipynb
+```
+
+### Dataset
+
+Download `CC_GENERAL.csv` from:  
+[https://www.kaggle.com/arjunbhasin2013/ccdata](https://www.kaggle.com/arjunbhasin2013/ccdata)  
+Place it in the `data/` folder before running notebooks.
+
+## Key Figures
+
+| Figure | Description |
+|---|---|
+| `fig_all_models_comparison.png` | PCA 2D projections — all 4 algorithms |
+| `fig_radar_charts.png` | Behavioral fingerprints per segment |
+| `fig_centroid_heatmap.png` | Standardized centroid comparison |
+| `fig_kmeans_elbow_silhouette.png` | K-Means k selection |
+
+## References
+
+Full references in `report/credit_card_segmentation.tex`.  
+Dataset: Bhasin, A. (2019). Credit Card Dataset for Clustering. Kaggle.
