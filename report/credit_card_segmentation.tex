@@ -1,0 +1,628 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{balance}
+
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Comparative Customer Segmentation Using Credit Card Behavioral Data:\\A Multi-Algorithm Clustering Analysis}
+
+\author{
+\IEEEauthorblockN{Om Tilekar}
+\IEEEauthorblockA{
+  \textit{MS in Data Science}\\
+  \textit{University}\\
+  om.tilekar@university.edu}
+}
+
+\maketitle
+
+%---------------------------------------------------------------
+\begin{abstract}
+Customer segmentation is a fundamental task in financial services,
+enabling targeted marketing, risk assessment, and personalized
+retention strategies. This paper presents a comparative analysis of
+four clustering algorithms---K-Means, Agglomerative Clustering,
+DBSCAN, and Gaussian Mixture Models (GMM)---applied to a publicly
+available credit card behavioral dataset of 8,950 customers described
+by 17 features. A systematic preprocessing pipeline was developed
+comprising median imputation, winsorization, log-transformation, and
+StandardScaler normalization. Each algorithm was evaluated using
+silhouette score, Davies-Bouldin index, and Calinski-Harabasz index.
+K-Means ($k{=}4$) achieved the highest silhouette score (0.2099) and
+Calinski-Harabasz index (2245.8), identifying four behaviorally
+distinct segments: Installment Buyers, Cash-Dependent Users,
+High-Value Transactors, and Low-Engagement Users. DBSCAN failed to
+produce stable clusters across 24 hyperparameter configurations due
+to the continuous, overlapping nature of financial behavioral data in
+high-dimensional space. Results demonstrate that partition-based
+methods outperform density-based approaches for credit card customer
+segmentation, while Agglomerative Clustering provides strong
+corroborating evidence for the four-cluster solution.
+\end{abstract}
+
+\begin{IEEEkeywords}
+customer segmentation, K-Means, DBSCAN, GMM, agglomerative
+clustering, credit card data, unsupervised learning, data mining
+\end{IEEEkeywords}
+
+%---------------------------------------------------------------
+\section{Introduction}
+
+Customer segmentation enables financial institutions to understand
+behavioral heterogeneity within their customer base, supporting
+data-driven decisions in credit risk management, product design, and
+targeted marketing~\cite{ngai2009application}. Credit card transaction
+data offers a rich behavioral signal---encompassing purchase patterns,
+cash advance usage, payment regularity, and credit
+utilization---making it well-suited for unsupervised clustering.
+
+Clustering algorithms differ fundamentally in their assumptions.
+Partition-based methods such as K-Means minimize within-cluster
+variance assuming spherical clusters~\cite{macqueen1967methods}.
+Hierarchical methods such as Agglomerative Clustering produce nested
+groupings through successive merging~\cite{murtagh2012algorithms}.
+Density-based methods such as DBSCAN identify arbitrarily shaped
+clusters and handle noise without a pre-specified
+$k$~\cite{ester1996density}. Probabilistic methods such as GMM
+provide soft assignments via the Expectation-Maximization
+algorithm~\cite{reynolds2009gaussian}. No single algorithm is
+universally optimal, and comparative evaluation is essential for
+robust segmentation.
+
+This paper addresses: \textit{which clustering technique produces the
+most meaningful, well-separated, and interpretable customer segments
+from credit card usage data?} Our contributions are: (1) a systematic
+preprocessing pipeline for financial behavioral data; (2) a
+quantitative comparison of four clustering paradigms; and (3)
+actionable segment profiles with direct business interpretability.
+
+The remainder is organized as follows. Section~\ref{sec:related}
+reviews related work. Section~\ref{sec:methodology} describes the
+dataset and methodology. Section~\ref{sec:results} presents results.
+Section~\ref{sec:discussion} discusses findings and limitations.
+Section~\ref{sec:conclusion} concludes.
+
+%---------------------------------------------------------------
+\section{Related Work}
+\label{sec:related}
+
+Customer segmentation using clustering is well-studied in the
+marketing and financial services
+literature~\cite{ngai2009application}. K-Means has been the dominant
+approach, consistently identifying 3--6 archetypes such as
+transactors, revolvers, and dormant
+customers~\cite{morissette2013k}. Its sensitivity to initialization
+and assumption of spherical clusters motivates consideration of
+alternatives.
+
+Agglomerative Clustering provides a parameter-free structural view,
+with dendrogram analysis guiding cluster count
+selection~\cite{murtagh2012algorithms}. Ward linkage produces compact
+clusters comparable to K-Means in financial
+applications~\cite{nielsen2016introduction}. DBSCAN has been applied
+successfully to spatial and network data but faces challenges in
+high-dimensional tabular datasets where inter-point distances converge
+and density contrasts
+diminish~\cite{ester1996density,xu2015comprehensive}. GMM
+accommodates elliptical cluster shapes and quantifies assignment
+uncertainty, with BIC-based model selection as standard
+practice~\cite{reynolds2009gaussian,fraley2002model}.
+
+To our knowledge, no prior work systematically compares all four
+paradigms---partitional, hierarchical, density-based, and
+probabilistic---on the same credit card dataset with consistent
+evaluation metrics and preprocessing, which motivates the present
+study.
+
+%---------------------------------------------------------------
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Dataset}
+
+The Credit Card Customer Dataset (CCDATA) was obtained from
+Kaggle~\cite{kaggle_ccdata}. It contains behavioral usage data for
+8,950 active credit card holders over six months, described by 18
+features including balance, purchase amounts, cash advance usage,
+payment behavior, credit limit, and tenure. Two features contained
+missing values: \texttt{MINIMUM\_PAYMENTS} ($n{=}313$, 3.5\%) and
+\texttt{CREDIT\_LIMIT} ($n{=}1$). Approximately 47\% of customers
+recorded zero total purchases and 59\% made no cash advances,
+indicating a significant inactive customer population.
+
+\subsection{Preprocessing Pipeline}
+
+A six-stage pipeline was applied prior to all clustering experiments.
+
+\textbf{Missing value imputation.} Both columns were imputed using
+the column median, which is robust to the right-skewed distributions
+characteristic of financial data. An assertion confirmed zero
+remaining nulls after imputation.
+
+\textbf{Column removal.} The identifier \texttt{CUST\_ID} was
+dropped, yielding 17 behavioral features.
+
+\textbf{Outlier mitigation.} Winsorization at the 1st and 99th
+percentiles was applied using \texttt{scipy.stats.mstats.winsorize},
+capping extremes without discarding rows and preserving
+outlier-defined segments such as ultra-high spenders.
+
+\textbf{Log-transformation.} Nine magnitude features with skewness
+exceeding 2.0---including \texttt{BALANCE}, \texttt{PURCHASES},
+\texttt{CASH\_ADVANCE}, \texttt{CREDIT\_LIMIT}, and related
+transaction counts---were transformed using $\log(x{+}1)$. Frequency
+and ratio features bounded in $[0,1]$ were excluded.
+Fig.~\ref{fig:distributions} illustrates the skewness reduction
+achieved.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig3_distributions_fixed.png}
+\caption{Feature distributions before (red) and after (green)
+log-transformation for six representative features. Raw distributions
+exhibit extreme right skew; log-transformation produces substantially
+more symmetric distributions.}
+\label{fig:distributions}
+\end{figure}
+
+\textbf{Feature scaling.} All 17 features were standardized using
+\texttt{StandardScaler} to zero mean and unit variance. Without this
+step, \texttt{CREDIT\_LIMIT} (range 0--30,000) would dominate
+\texttt{TENURE} (range 6--12) in any distance computation.
+
+\textbf{Dimensionality analysis.} PCA was applied to the scaled
+matrix. Fig.~\ref{fig:pca} shows that six components explain 85\%
+of cumulative variance and eight explain 92\%. All 17 features were
+retained for clustering; 2-component PCA was used solely for
+visualization.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig4_pca_scree.png}
+\caption{PCA cumulative explained variance scree plot. Six components
+reach the 85\% threshold (red dashed); eight reach $\approx$92\%
+(orange dashed). PCA was used for visualization only.}
+\label{fig:pca}
+\end{figure}
+
+Fig.~\ref{fig:correlation} shows the Pearson correlation matrix of
+scaled features. Strong associations are observed between
+\texttt{PURCHASES\_TRX} and \texttt{PURCHASES\_FREQUENCY}
+($r{=}0.91$), and \texttt{CASH\_ADVANCE\_FREQUENCY} and
+\texttt{CASH\_ADVANCE\_TRX} ($r{=}0.92$), confirming coherent
+behavioral dimensions.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig2_correlation_heatmap.png}
+\caption{Pearson correlation matrix of standardized features (lower
+triangle). Strong correlations between purchase transaction count and
+frequency ($r{=}0.91$) and between cash advance frequency and
+transaction count ($r{=}0.92$) reflect coherent behavioral
+dimensions.}
+\label{fig:correlation}
+\end{figure}
+
+\subsection{Clustering Algorithms}
+
+\textbf{K-Means} served as the baseline. The optimal $k$ was
+determined jointly by WCSS elbow analysis and silhouette scores over
+$k \in \{2,\ldots,12\}$, shown in Fig.~\ref{fig:elbow}. Although the
+silhouette peaked at $k{=}2$ (0.263), this partition lacked
+granularity. Cluster size analysis over $k \in \{3,\ldots,7\}$
+identified $k{=}4$ as producing four well-balanced segments
+(1,656--2,718 customers each). Final fitting used \texttt{k-means++}
+initialization with $n\_init{=}20$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_kmeans_elbow_silhouette.png}
+\caption{K-Means cluster selection: WCSS elbow curve (left) and
+silhouette score by $k$ (right). The smooth WCSS decline indicates a
+continuous behavioral gradient. $k{=}4$ was selected based on cluster
+balance, size uniformity, and interpretability despite the silhouette
+peak at $k{=}2$.}
+\label{fig:elbow}
+\end{figure}
+
+\textbf{Agglomerative Clustering} used ward linkage with $k{=}4$ for
+direct comparison. Ward linkage minimizes within-cluster variance at
+each merge, making it the most comparable hierarchical analogue to
+K-Means. A truncated dendrogram on a 300-row sample confirmed the
+cluster count.
+
+\textbf{DBSCAN} was evaluated across 24 hyperparameter combinations
+($\varepsilon \in \{0.5, 0.8, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5, 3.0\}$,
+$\text{min\_samples} \in \{5, 10, 15, 20, 33\}$). The best available
+configuration ($\varepsilon{=}1.8$, $\text{min\_samples}{=}10$)
+produced 3 clusters with 8.1\% noise and was retained for
+completeness.
+
+\textbf{GMM} with full covariance was fitted for $n \in \{2,\ldots,10\}$
+components. Marginal BIC analysis identified $n{=}7$ as the point of
+maximum curvature; BIC deteriorated at $n{=}8$ before recovering
+irregularly, indicating additional components model noise rather than
+genuine structure.
+
+\subsection{Evaluation Metrics}
+
+Three internal validation metrics were computed for all models:
+\textbf{Silhouette Score}~\cite{rousseeuw1987silhouettes} (cohesion
+and separation; $\uparrow$ better, range $[-1,1]$);
+\textbf{Davies-Bouldin Index}~\cite{davies1979cluster} (average
+cluster similarity; $\downarrow$ better);
+\textbf{Calinski-Harabasz Index}~\cite{calinski1974dendrite}
+(between-to-within dispersion ratio; $\uparrow$ better). Noise
+points ($\text{label}{=}{-1}$) were excluded from all DBSCAN metric
+computations.
+
+%---------------------------------------------------------------
+\section{Results}
+\label{sec:results}
+
+\subsection{Algorithm Comparison}
+
+Table~\ref{tab:comparison} presents evaluation metrics for all four
+algorithms. K-Means achieved the highest silhouette score (0.2099)
+and Calinski-Harabasz index (2245.8), winning two of three metrics.
+Agglomerative Clustering corroborated the four-cluster solution
+independently (silhouette: 0.1774, CH: 1870.3). DBSCAN's
+Davies-Bouldin index (0.9681) reflects evaluation on only 91.9\%
+non-noise points and is not directly comparable. GMM ($n{=}7$)
+achieved finer granularity at the cost of compactness (silhouette:
+0.1644).
+
+\begin{table}[t]
+\centering
+\caption{Clustering Algorithm Comparison}
+\label{tab:comparison}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Model         & $k$ & Silhouette$\uparrow$ & Davies-Bouldin$\downarrow$ & Calinski-Harabasz$\uparrow$ \\
+\midrule
+K-Means       & 4   & \textbf{0.2099}      & 1.6708                     & \textbf{2245.8}              \\
+Agglomerative & 4   & 0.1774               & 1.7218                     & 1870.3                       \\
+DBSCAN$^{*}$  & 3   & 0.1160               & \textbf{0.9681}            & 14.5                         \\
+GMM           & 7   & 0.1644               & 2.3007                     & 1334.6                       \\
+\bottomrule
+\multicolumn{5}{l}{\footnotesize $^{*}$Metrics exclude 8.1\% noise points; DB index not directly comparable.}
+\end{tabular}%
+}
+\end{table}
+
+Fig.~\ref{fig:comparison} presents PCA 2D projections of all four
+solutions. K-Means and Agglomerative produce nearly identical spatial
+boundaries, strongly validating the four-cluster structure. DBSCAN
+assigns the majority to a single dense region. GMM subdivides K-Means
+regions into finer components.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_all_models_comparison.png}
+\caption{PCA 2D projections of all four clustering solutions. K-Means
+and Agglomerative Clustering produce nearly identical spatial
+boundaries, validating the four-cluster partition. DBSCAN assigns
+most customers to a single cluster with scattered noise points. GMM
+subdivides the K-Means regions into seven finer components,
+particularly splitting high-purchase and high-balance zones.}
+\label{fig:comparison}
+\end{figure*}
+
+\subsection{Customer Segment Profiles}
+
+Table~\ref{tab:cluster_sizes} shows the four K-Means segment sizes.
+All are substantially populated (18.5\%--30.4\%), confirming $k{=}4$
+does not produce degenerate micro-clusters. Fig.~\ref{fig:sizes}
+visualizes the distribution.
+
+\begin{table}[t]
+\centering
+\caption{K-Means Cluster Sizes ($k{=}4$)}
+\label{tab:cluster_sizes}
+\begin{tabular}{@{}llcc@{}}
+\toprule
+Cluster & Segment Name           & Count          & Share   \\
+\midrule
+C0      & Installment Buyers     & 2,141          & 23.9\%  \\
+C1      & Cash-Dependent Users   & 2,718          & 30.4\%  \\
+C2      & High-Value Transactors & 2,435          & 27.2\%  \\
+C3      & Low-Engagement Users   & 1,656          & 18.5\%  \\
+\midrule
+        & \textbf{Total}         & \textbf{8,950} & \textbf{100\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_cluster_sizes.png}
+\caption{Customer segment distribution for K-Means ($k{=}4$). All
+four segments contain 1,656--2,718 customers, confirming no
+degenerate micro-clusters.}
+\label{fig:sizes}
+\end{figure}
+
+Table~\ref{tab:profiles} reports key centroid values in original
+scale. Fig.~\ref{fig:centroid} shows the full standardized centroid
+heatmap; Fig.~\ref{fig:radar} shows radar profiles across eight
+behavioral dimensions.
+
+\begin{table}[t]
+\centering
+\caption{K-Means Cluster Centroids (Selected Features, Original Scale)}
+\label{tab:profiles}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Feature              & C0 Installment & C1 Cash-Dep. & C2 High-Val. & C3 Low-Eng. \\
+\midrule
+BALANCE              & 4.97    & 7.39    & 7.16    & 4.21   \\
+PURCHASES            & 6.16    & 1.57    & 7.45    & 4.97   \\
+CASH\_ADVANCE        & 0.72    & 6.99    & 3.10    & 0.96   \\
+INSTALLMENTS\_PURCH. & 6.04    & 0.48    & 5.31    & 1.68   \\
+PURCHASES\_FREQ.     & 0.82    & 0.07    & 0.85    & 0.23   \\
+CREDIT\_LIMIT        & 7.73    & 8.09    & 8.56    & 7.90   \\
+PAYMENTS             & 802.83  & 1705.62 & 2895.94 & 821.21 \\
+PRC\_FULL\_PAYMENT   & 0.29    & 0.03    & 0.17    & 0.15   \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_centroid_heatmap.png}
+\caption{K-Means cluster centroids as standardized feature values.
+Blue = above-average; red = below-average for that cluster. Each row
+exhibits a distinct pattern confirming behavioral differentiation
+across all four segments.}
+\label{fig:centroid}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_radar_charts.png}
+\caption{Radar chart profiles for the four K-Means segments across
+eight normalized behavioral dimensions. C2 (High-Value Transactors)
+fills the largest polygon; C1 (Cash-Dependent Users) shows a
+cross-shaped spike on cash advance; C0 (Installment Buyers) shows a
+narrow purchase-frequency wedge; C3 (Low-Engagement Users) produces
+the smallest polygon.}
+\label{fig:radar}
+\end{figure}
+
+\textbf{C0---Installment Buyers (23.9\%).} High installment purchase
+activity (6.04), high purchase frequency (0.82), highest full-payment
+rate (0.29), and minimal cash advance (0.72). These disciplined,
+low-risk customers buy regularly through structured payment plans.
+
+\textbf{C1---Cash-Dependent Users (30.4\%).} The largest segment
+exhibits high cash advance amounts (6.99), cash advance frequency
+(0.30), near-zero purchases (1.57, frequency: 0.07), and the lowest
+full-payment rate (0.03). These customers use their card primarily as
+a liquidity instrument, signaling potential financial stress and
+elevated credit risk.
+
+\textbf{C2---High-Value Transactors (27.2\%).} The premium segment
+records the highest purchases (7.45), one-off purchases (6.64),
+credit limit (8.56), and total payments (2,895.94). The radar polygon
+covers the largest area across all dimensions, confirming these as the
+most financially active and institutionally valuable customers.
+
+\textbf{C3---Low-Engagement Users (18.5\%).} Uniformly low values
+across all dimensions---below-average purchases (4.97), low frequency
+(0.23), minimal cash advances, and the lowest balance frequency
+(0.60). The radar polygon is the most compressed, confirming minimal
+card engagement and representing a significant activation opportunity.
+
+Fig.~\ref{fig:parallel} corroborates these profiles via parallel
+coordinates, with clearly separated trajectory bundles especially at
+\texttt{CASH\_ADVANCE} and \texttt{PURCHASES\_FREQUENCY}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_parallel_coordinates.png}
+\caption{Parallel coordinates of all four customer segments
+(standardized scale, 300-customer sample per segment). Separated
+trajectory bundles at \texttt{CASH\_ADVANCE} and
+\texttt{PURCHASES\_FREQUENCY} corroborate the behavioral
+distinctiveness of each segment.}
+\label{fig:parallel}
+\end{figure}
+
+%---------------------------------------------------------------
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Algorithm Suitability for Financial Behavioral Data}
+
+The convergence of K-Means and Agglomerative Clustering on the same
+four-cluster spatial partition---despite fundamentally different
+algorithmic approaches---provides strong cross-validation that the
+four-segment solution captures genuine data structure rather than an
+algorithmic artifact. This constitutes a methodological strength of
+the comparative design.
+
+DBSCAN's failure across 24 hyperparameter combinations is an
+informative comparative finding. At low $\varepsilon$, up to 82.8\%
+of customers were classified as noise. At high $\varepsilon$, all
+customers collapsed into a single cluster. This behavior is consistent
+with the curse of dimensionality in 17-dimensional continuous data,
+where inter-point distances converge and eliminate the density
+contrasts DBSCAN requires~\cite{xu2015comprehensive}. This suggests
+that partition-based and hierarchical methods are better suited to
+financial behavioral segmentation than density-based approaches.
+
+GMM's $n{=}7$ components subdivide the K-Means partition into finer
+groupings, capturing soft boundaries that K-Means cannot represent.
+However, the reduced silhouette score (0.1644 vs.\ 0.2099) indicates
+this additional complexity trades cluster compactness for
+granularity. BIC deterioration at $n{=}8$ confirms $n{=}7$ as the
+principled stopping point.
+
+\subsection{Business Implications}
+
+The four segments carry direct actionable interpretations.
+Cash-Dependent Users (30.4\%) represent the highest credit risk;
+proactive outreach, financial counseling, or credit limit adjustment
+may reduce default exposure. High-Value Transactors (27.2\%) are the
+most profitable segment and should be prioritized for premium products
+and loyalty programs. Installment Buyers (23.9\%) are low-risk and
+may respond to installment plan expansion and balance transfer offers.
+Low-Engagement Users (18.5\%) represent a significant activation
+opportunity via targeted incentive campaigns.
+
+\subsection{Limitations}
+
+Several limitations apply. First, the dataset covers a single
+six-month behavioral window; longitudinal data would enable customer
+migration analysis across segments over time. Second, all validation
+metrics are internal; no ground-truth labels exist for external
+validation, which is inherent to unsupervised learning. Third,
+zero-inflation in purchase and cash advance features (47\% and 59\%
+zero values) may conflate behaviorally distinct inactive customers
+into the single low-engagement segment. Fourth, PCA applied before
+DBSCAN may improve density separation and constitutes a promising
+direction for future work. Fifth, the absence of sociodemographic
+features limits segment profiling depth.
+
+\subsection{Future Work}
+
+Future directions include: (1) self-organizing maps or deep
+clustering methods to handle continuous behavioral gradients;
+(2) temporal modeling of customer segment transitions over time;
+(3) semi-supervised approaches incorporating partial label information
+from customer service outcomes; and (4) ensemble clustering to produce
+consensus partitions more robust than any individual algorithm.
+
+%---------------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper presented a systematic comparative evaluation of four
+clustering algorithms for credit card customer segmentation.
+Following a principled preprocessing pipeline addressing missing
+values, outliers, skewness, and scale, all methods were applied to
+8,950 customers across 17 behavioral features.
+
+K-Means ($k{=}4$) was the best-performing algorithm (silhouette:
+0.2099, CH: 2245.8), producing four interpretable segments with clear
+business implications. Its spatial convergence with Agglomerative
+Clustering validates the robustness of the four-cluster solution.
+DBSCAN's instability across 24 configurations highlights the
+limitations of density-based methods on high-dimensional financial
+behavioral data. GMM offered probabilistic granularity at the cost of
+cluster compactness.
+
+The four identified segments---Installment Buyers, Cash-Dependent
+Users, High-Value Transactors, and Low-Engagement Users---correspond
+to actionable archetypes that can directly inform credit risk
+management, product design, and targeted marketing in financial
+services. Code and notebooks are available at the project GitHub
+repository.
+
+%---------------------------------------------------------------
+\balance
+\begin{thebibliography}{00}
+
+\bibitem{ngai2009application}
+E.\,W.\,T. Ngai, L. Xiu, and D.\,C.\,K. Chau,
+``Application of data mining techniques in customer relationship
+management: A literature review and classification,''
+\textit{Expert Systems with Applications},
+vol.~36, no.~2, pp.~2592--2602, 2009.
+
+\bibitem{macqueen1967methods}
+J. MacQueen,
+``Some methods for classification and analysis of multivariate
+observations,''
+in \textit{Proc. 5th Berkeley Symp. Mathematical Statistics and
+Probability}, vol.~1, pp.~281--297, 1967.
+
+\bibitem{murtagh2012algorithms}
+F. Murtagh and P. Contreras,
+``Algorithms for hierarchical clustering: An overview,''
+\textit{WIREs Data Mining and Knowledge Discovery},
+vol.~2, no.~1, pp.~86--97, 2012.
+
+\bibitem{ester1996density}
+M. Ester, H.-P. Kriegel, J. Sander, and X. Xu,
+``A density-based algorithm for discovering clusters in large
+spatial databases with noise,''
+in \textit{Proc. 2nd Int. Conf. Knowledge Discovery and Data Mining
+(KDD)}, pp.~226--231, 1996.
+
+\bibitem{reynolds2009gaussian}
+D.\,A. Reynolds,
+``Gaussian mixture models,''
+\textit{Encyclopedia of Biometrics}, pp.~659--663, 2009.
+
+\bibitem{kaggle_ccdata}
+A. Bhasin,
+``Credit Card Dataset for Clustering,''
+Kaggle, 2019. [Online]. Available:
+\url{https://www.kaggle.com/arjunbhasin2013/ccdata}
+
+\bibitem{rousseeuw1987silhouettes}
+P.\,J. Rousseeuw,
+``Silhouettes: A graphical aid to the interpretation and validation
+of cluster analysis,''
+\textit{Journal of Computational and Applied Mathematics},
+vol.~20, pp.~53--65, 1987.
+
+\bibitem{davies1979cluster}
+D.\,L. Davies and D.\,W. Bouldin,
+``A cluster separation measure,''
+\textit{IEEE Trans. Pattern Analysis and Machine Intelligence},
+vol.~PAMI-1, no.~2, pp.~224--227, 1979.
+
+\bibitem{calinski1974dendrite}
+T. Cali\'{n}ski and J. Harabasz,
+``A dendrite method for cluster analysis,''
+\textit{Communications in Statistics},
+vol.~3, no.~1, pp.~1--27, 1974.
+
+\bibitem{morissette2013k}
+L. Morissette and S. Chartier,
+``The k-means clustering technique: General considerations and
+implementation in Mathematica,''
+\textit{Tutorials in Quantitative Methods for Psychology},
+vol.~9, no.~1, pp.~15--24, 2013.
+
+\bibitem{nielsen2016introduction}
+F. Nielsen,
+\textit{Introduction to HPC with MPI for Data Science}.
+Springer, 2016.
+
+\bibitem{xu2015comprehensive}
+D. Xu and Y. Tian,
+``A comprehensive survey of clustering algorithms,''
+\textit{Annals of Data Science},
+vol.~2, no.~2, pp.~165--193, 2015.
+
+\bibitem{fraley2002model}
+C. Fraley and A.\,E. Raftery,
+``Model-based clustering, discriminant analysis, and density
+estimation,''
+\textit{Journal of the American Statistical Association},
+vol.~97, no.~458, pp.~611--631, 2002.
+
+\end{thebibliography}
+
+\end{document}

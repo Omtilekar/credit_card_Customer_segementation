@@ -1,0 +1,5 @@
+model,n_clusters,silhouette,davies_bouldin,calinski_harabasz
+K-Means,4,0.2099,1.6708,2245.8
+Agglomerative,4,0.1774,1.7218,1870.3
+DBSCAN,3,0.116,0.9681,14.5
+GMM,7,0.1644,2.3007,1334.6
