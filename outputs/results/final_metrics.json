@@ -1,0 +1,8 @@
+{
+  "algorithm": "KMeans",
+  "params": "k=4",
+  "n_clusters": 4,
+  "silhouette": 0.2165788742858726,
+  "davies_bouldin": 1.6876036943106298,
+  "calinski_harabasz": 2260.3704123558146
+}
